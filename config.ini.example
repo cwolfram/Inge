@@ -1,5 +1,5 @@
 [jira]
-server = https://jira.intapps.it
+server = https://jira.example.com
 project = INV
 
 [fields]
@@ -12,5 +12,3 @@ manufacture_date = customfield_11304
 model_identifier = customfield_11308
 summary = summary
 
-[test]
-verbose_allowed = True
