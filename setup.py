@@ -10,7 +10,10 @@ setup(
         'Click',
         'jira',
         'python-dateutil',
-        'prettytable'
+        'prettytable',
+        'oauthlib',
+        'jwt',
+        'cryptography'
     ], entry_points='''
     [console_scripts]
     inge=inge:main
