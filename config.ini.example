@@ -1,6 +1,7 @@
 [jira]
 server = https://jira.example.com
 project = INV
+rsa-private-key = testkey.pem
 
 [fields]
 # Put in your own jira fields for these

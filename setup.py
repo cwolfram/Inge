@@ -13,7 +13,8 @@ setup(
         'prettytable',
         'oauthlib',
         'jwt',
-        'cryptography'
+        'cryptography',
+        'pyjwt'
     ], entry_points='''
     [console_scripts]
     inge=inge:main

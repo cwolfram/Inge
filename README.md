@@ -8,5 +8,4 @@ Parameters:
 
 # TODO
 - import custom input options from config
-- I should probably switch to MacModelShelf for model type lookup
 - And then rewrite/import the warranty date function
