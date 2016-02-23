@@ -1,2 +1,3 @@
 secrets.ini
 config.ini
+*.pem
