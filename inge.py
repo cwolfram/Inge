@@ -193,6 +193,23 @@ def connect_to_jira():
         p('Error connecting to JIRA.\n{}'.format(e), 'error')
 
 
+# "myt-$inventory_number" should become "myt-1337" if inventory_number is "1337"
+# "myt-$serialnumber" should become "myt-C02PQB5VG8WP" if serialnumber is "C02PQB5VG8WP"
+def build_summary_string(item, devicetype):
+    """
+    Builds a summary string from the template defined in the config.ini
+    :param item: The item dictionary
+    :param devicetype: The devicetype (like "macbook") from the config.ini input key
+    :return:
+    """
+    r = re.compile('\$(\w*)')
+    summary = config['input.{}'.format(devicetype)]['summary']
+    m = r.findall(summary)
+    for x in m:
+        summary = summary.replace('$'+x,item[x])
+    return summary
+
+
 class Flags(object):
     def __init__(self):
         """ Helper class for flags like verbose, simulate and debug """
