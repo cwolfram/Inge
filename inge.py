@@ -77,7 +77,7 @@ def p(text, message_type="normal"):
         click.echo(click.style(' ', bg='green', fg='black') + click.style(' ' + text, fg='green'))
 
     elif message_type is "debug":
-        click.echo(click.style('Debug: ', bold=True) + click.style(text))
+        click.echo(click.style('Debug: ', bold=True) + click.style(str(text)))
 
     else:
         click.echo(text)
