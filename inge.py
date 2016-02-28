@@ -47,7 +47,7 @@ d88' d88'   88b`?88P'`88b`?888P'
 """
 
 
-def sanitize_input(s):
+def sanitize_apple_serial(s):
     """
     Checks if an Apple Serial begins with an S and cuts it off brutally
     :param s: The serial to check
@@ -232,6 +232,8 @@ def new(flags, inventory_number, serial_number):
     item['inventory_number'] = inventory_number
     item['serial_number'] = sanitize_input(serial_number)
     item['model'] = model(model_code(sanitize_input(serial_number))) # get model string from macmodelshelf
+    item['serial_number'] = sanitize_apple_serial(serial_number)
+    item['model'] = model(model_code(sanitize_apple_serial(serial_number))) # get model string from macmodelshelf
     warranty_info = g.offline_warranty(item.get('serial_number')) # get warranty info from pyMacWarranty
     item['est_manufacture_date'] = warranty_info[0].get('EST_MANUFACTURE_DATE')
     item['est_purchase_date'] = warranty_info[0].get('EST_PURCHASE_DATE')
