@@ -71,7 +71,6 @@ def p(text, message_type="normal"):
 
     elif message_type is "error":
         click.echo(click.style(' ', bg='red', fg='black') + click.style(' ' + text, fg='red'), err=True)
-        sys.exit(1)
 
     elif message_type is "success":
         click.echo(click.style(' ', bg='green', fg='black') + click.style(' ' + text, fg='green'))
