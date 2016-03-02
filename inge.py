@@ -111,6 +111,7 @@ def read(file_path):
     with open(file_path) as f:
         return f.read()
 
+
 # OAUTH #
 # The contents of the rsa.pem file generated (the private RSA key)
 try:
@@ -253,28 +254,92 @@ def main(flags, verbose, debug, simulate):
     if flags.simulate:
         p("Simulation mode, nothing will be written", 'warning')
 
-    print(connect_to_jira())
-
 
 @main.command()
-@click.option('--inventory_number', prompt='Enter or scan the inventory number')
-@click.option('--serial_number', prompt='Enter or scan the serial number')
+@click.option('--inventory_number')
+@click.option('--serial_number')
+@click.option('-t', '--itemtype', default='macbook')
 @pass_flags
-def new(flags, inventory_number, serial_number):
+def new(flags, inventory_number, serial_number, itemtype):
     """Creates a new inventory ticket"""
     item = new_item()
-    item['inventory_number'] = inventory_number
-    item['serial_number'] = sanitize_input(serial_number)
-    item['model'] = model(model_code(sanitize_input(serial_number))) # get model string from macmodelshelf
-    item['serial_number'] = sanitize_apple_serial(serial_number)
-    item['model'] = model(model_code(sanitize_apple_serial(serial_number))) # get model string from macmodelshelf
-    warranty_info = g.offline_warranty(item.get('serial_number')) # get warranty info from pyMacWarranty
-    item['est_manufacture_date'] = warranty_info[0].get('EST_MANUFACTURE_DATE')
-    item['est_purchase_date'] = warranty_info[0].get('EST_PURCHASE_DATE')
-    item['est_warranty_end_date'] = warranty_info[0].get('EST_WARRANTY_END_DATE')
+    item['itemtype'] = itemtype
 
-    if flags.debug:
-        print(item)
+    # Writes a list of input types from the config in a list
+    input_types = list()
+    for x in config.sections():
+        if x.startswith('input.'):
+            input_types.append(x.split('.')[1])
+
+    if flags.debug: print('Debug: Input Type List: ', input_types)
+    if flags.debug: p(input_types, 'debug')
+
+    # Checks if specified type is in the config ini. If yes, let's go!
+    if itemtype not in input_types:
+        p('Given input type \"{}\" not in config.ini'.format(itemtype), 'error')
+        sys.exit(17)
+    else:
+        p('New {}:'.format(itemtype))
+        # iterates through the fields starting with "field."
+        # if the value starts with "prompt": prompt for a value.
+        # if there is a value after the "prompt.": use it as a default value
+        for x in config['input.{}'.format(itemtype)].keys():
+            if x.startswith('field.'):
+                if config['input.{}'.format(itemtype)][x].startswith('prompt'):
+                    try:
+                        item[x.split('.')[1]] = click.prompt('Enter {}'.format(x.split('.')[1]),
+                                              default=config['input.{}'.format(itemtype)][x].split('.')[1])
+                    except IndexError:
+                        item[x.split('.')[1]] = click.prompt('Enter {}'.format(x.split('.')[1])) # if no default given
+
+                # Else: Use the Data from the config and be quiet about it. (predefined field)
+                else:
+                    item[x.split('.')[1]] = config['input.{}'.format(itemtype)][x]
+
+            # Do all kinds of voodo magic if this is an apple device. Warranty, Model description, etc.
+            if x == 'appledevice':
+                if config['input.{}'.format(itemtype)][x] == 'True':
+                    # Sanitize Serial Number. Removes 'S' from scanned serials
+                    item['serial_number'] = sanitize_apple_serial(item['serial_number'])
+                    # get warranty info from pyMacWarranty
+                    warranty_info = g.offline_warranty(item.get('serial_number'))
+                    item['est_manufacture_date'] = warranty_info[0].get('EST_MANUFACTURE_DATE')
+                    item['est_purchase_date'] = warranty_info[0].get('EST_PURCHASE_DATE')
+                    item['est_warranty_end_date'] = warranty_info[0].get('EST_WARRANTY_END_DATE')
+                    # get the model string from macmodelshelf
+                    item['model'] = model(model_code(sanitize_apple_serial(item.get('serial_number'))))
+
+        # summary has to be built last because may depend on other stuff
+        item['summary'] = build_summary_string(item, itemtype)
+
+        if flags.debug:
+            p('PRELIMINARY DICTIONARY: ', 'debug')
+            p(item, 'debug')
+
+        # build issue dict for jira
+        issue_dict = build_issue_dict(item)
+
+        if flags.debug:
+            p('ISSUE DICTIONARY FOR JIRA:', 'debug')
+            print(issue_dict)
+
+        # if not flags.simulate:
+        #     if flags.debug:
+        #         print issue_dict
+        #     if 'jira' not in locals():
+        #         jira = connect_to_jira()
+        #     new_issue = jira.create_issue(fields=issue_dict)
+        #     p('Issue created at https://jira.intapps.it/browse/%s' % new_issue, 'success')
+        #     if pwr_dict:
+        #         pwr_issue = jira.create_issue(fields=pwr_dict)
+        #         p('Power Adapter Issue created at https://jira.intapps.it/browse/%s' % pwr_issue, 'success')
+        #         # Linking these two issues
+        #         jira.create_issue_link('Relates', new_issue, pwr_issue)
+        #         p('Issue Link created successfully', 'success')
+
+
+
+
 
 
 if __name__ == '__main__':
