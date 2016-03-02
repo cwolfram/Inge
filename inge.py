@@ -40,7 +40,7 @@ logo = """
  d88  d88   88P88b  ,88b 88b
 d88' d88'   88b`?88P'`88b`?888P'
                       )88
-                     ,88P
+     2.0              ,88P
                  `?8888P
 
 ====  Inventory Gone Easy  ====
