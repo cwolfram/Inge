@@ -209,6 +209,24 @@ def build_summary_string(item, devicetype):
     return summary
 
 
+def build_issue_dict(item):
+    """
+    Builds the dictionary that is used to write all the stuff into jira
+    :param item: The inventory item dictionary from the first step
+    """
+    issue_dict = {}
+    for i in item.keys():
+        if i != 'itemtype':
+            try:
+                issue_dict[config['fields'][i]] = item[i]
+            except KeyError:
+                p('The following field does not seem to exist in the \"fields\" section of the config.ini: {}'.format(i), 'warning')
+    issue_dict['summary'] = item['summary']
+    issue_dict['project'] = config['jira']['project']
+    issue_dict['issuetype'] = config['input.'+item['itemtype']]['issuetype']
+    return issue_dict
+
+
 class Flags(object):
     def __init__(self):
         """ Helper class for flags like verbose, simulate and debug """
