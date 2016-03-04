@@ -82,16 +82,6 @@ def p(text, message_type="normal", prefix=""):
         click.echo(text)
 
 
-def new_item():
-    return {u'serial_number': u'',
-            u'inventory_number': u'',
-            u'model': u'',
-            u'est_manufacture_date': u'',
-            u'est_purchase_date': u'',
-            u'est_warranty_end_date': u'',
-            }
-
-
 config = configparser.ConfigParser()
 if not config.read('{}/config.ini'.format(scriptpath)):
     p("Config file missing, take a look at config.ini.example and rename it to config.ini", "error")
