@@ -183,6 +183,45 @@ def connect_to_jira():
         p('Error connecting to JIRA.\n{}'.format(e), 'error')
 
 
+def new_item(itemtype):
+    item = dict()
+    item['itemtype'] = itemtype
+    itemtype___format = 'input.{}'.format(itemtype)
+
+    for x in config[itemtype___format].keys():
+        if x.startswith('field.'):
+            if config[itemtype___format][x].startswith('prompt'):
+                try:
+                    item[x.split('.')[1]] = click.prompt('Enter {}'.format(x.split('.')[1]),
+                                                         default=config[itemtype___format][x].split('.')[1])
+                except IndexError:
+                    item[x.split('.')[1]] = click.prompt('Enter {}'.format(x.split('.')[1]))  # if no default given
+
+            # Else: Use the Data from the config and be quiet about it. (predefined field)
+            else:
+                item[x.split('.')[1]] = config[itemtype___format][x]
+
+        # Do all kinds of voodo magic if this is an apple device. Warranty, Model description, etc.
+        if x == 'appledevice':
+            if config[itemtype___format][x] == 'True':
+                # Sanitize Serial Number. Removes 'S' from scanned serials
+                item['serial_number'] = sanitize_apple_serial(item['serial_number'])
+                # get warranty info from pyMacWarranty
+                warranty_info = g.offline_warranty(item.get('serial_number'))
+                item['est_manufacture_date'] = warranty_info[0].get('EST_MANUFACTURE_DATE')
+                item['est_purchase_date'] = warranty_info[0].get('EST_PURCHASE_DATE')
+                item['est_warranty_end_date'] = warranty_info[0].get('EST_WARRANTY_END_DATE')
+                # get the model string from macmodelshelf
+                item['model'] = model(model_code(sanitize_apple_serial(item.get('serial_number'))))
+
+        if x == 'link':
+            item[x] = config[itemtype___format][x]
+
+    # summary has to be built last because may depend on other stuff
+    item['summary'] = build_summary_string(item, itemtype)
+    return item
+
+
 # "myt-$inventory_number" should become "myt-1337" if inventory_number is "1337"
 # "myt-$serialnumber" should become "myt-C02PQB5VG8WP" if serialnumber is "C02PQB5VG8WP"
 def build_summary_string(item, devicetype):
@@ -211,10 +250,21 @@ def build_issue_dict(item):
             try:
                 issue_dict[config['fields'][i]] = item[i]
             except KeyError:
-                p('The following field does not seem to exist in the \"fields\" section of the config.ini: {}'.format(i), 'warning')
+                if i != 'link':
+                    p('The following field does not seem to exist in the \"fields\" section of the config.ini: {}'.format(i), 'warning')
     issue_dict['summary'] = item['summary']
-    issue_dict['project'] = config['jira']['project']
-    issue_dict['issuetype'] = config['input.'+item['itemtype']]['issuetype']
+
+    try:
+        issue_dict['project'] = config['jira']['project']
+    except KeyError:
+        p("No \"project\" key found in config.ini (in section [jira]). ", 'error')
+        sys.exit(19)
+
+    try:
+        issue_dict['issuetype'] = {'name': config['input.'+item['itemtype']]['issuetype']}
+    except KeyError:
+        p("No \"issuetype\" key found in config.ini (in section [{}]). ".format('input.'+item['itemtype']), 'error')
+        sys.exit(19)
     return issue_dict
 
 
@@ -252,8 +302,6 @@ def main(flags, verbose, debug, simulate):
 @pass_flags
 def new(flags, inventory_number, serial_number, itemtype):
     """Creates a new inventory ticket"""
-    item = new_item()
-    item['itemtype'] = itemtype
 
     # Writes a list of input types from the config in a list
     input_types = list()
@@ -261,75 +309,58 @@ def new(flags, inventory_number, serial_number, itemtype):
         if x.startswith('input.'):
             input_types.append(x.split('.')[1])
 
-    if flags.debug: print('Debug: Input Type List: ', input_types)
-    if flags.debug: p(input_types, 'debug')
+    if flags.debug:
+        # print('Debug: Input Type List: ', input_types)
+        p(input_types, 'debug', 'Input Type List: ')
 
     # Checks if specified type is in the config ini. If yes, let's go!
     if itemtype not in input_types:
         p('Given input type \"{}\" not in config.ini'.format(itemtype), 'error')
         sys.exit(17)
-    else:
-        p('New {}:'.format(itemtype))
-        # iterates through the fields starting with "field."
-        # if the value starts with "prompt": prompt for a value.
-        # if there is a value after the "prompt.": use it as a default value
-        for x in config['input.{}'.format(itemtype)].keys():
-            if x.startswith('field.'):
-                if config['input.{}'.format(itemtype)][x].startswith('prompt'):
-                    try:
-                        item[x.split('.')[1]] = click.prompt('Enter {}'.format(x.split('.')[1]),
-                                              default=config['input.{}'.format(itemtype)][x].split('.')[1])
-                    except IndexError:
-                        item[x.split('.')[1]] = click.prompt('Enter {}'.format(x.split('.')[1])) # if no default given
 
-                # Else: Use the Data from the config and be quiet about it. (predefined field)
-                else:
-                    item[x.split('.')[1]] = config['input.{}'.format(itemtype)][x]
+    p('Enter Details for item: {}'.format(itemtype))
+    # iterates through the fields starting with "field."
+    # if the value starts with "prompt": prompt for a value.
+    # if there is a value after the "prompt.": use it as a default value
+    item = new_item(itemtype)
 
-            # Do all kinds of voodo magic if this is an apple device. Warranty, Model description, etc.
-            if x == 'appledevice':
-                if config['input.{}'.format(itemtype)][x] == 'True':
-                    # Sanitize Serial Number. Removes 'S' from scanned serials
-                    item['serial_number'] = sanitize_apple_serial(item['serial_number'])
-                    # get warranty info from pyMacWarranty
-                    warranty_info = g.offline_warranty(item.get('serial_number'))
-                    item['est_manufacture_date'] = warranty_info[0].get('EST_MANUFACTURE_DATE')
-                    item['est_purchase_date'] = warranty_info[0].get('EST_PURCHASE_DATE')
-                    item['est_warranty_end_date'] = warranty_info[0].get('EST_WARRANTY_END_DATE')
-                    # get the model string from macmodelshelf
-                    item['model'] = model(model_code(sanitize_apple_serial(item.get('serial_number'))))
+    if flags.debug:
+        p('PRELIMINARY DICTIONARY: ', 'debug')
+        p(item, 'debug','Original Item: ')
 
-        # summary has to be built last because may depend on other stuff
-        item['summary'] = build_summary_string(item, itemtype)
+    # build issue dict for jira
+    issue_dict = build_issue_dict(item)
 
-        if flags.debug:
-            p('PRELIMINARY DICTIONARY: ', 'debug')
-            p(item, 'debug')
+    if flags.debug:
+        p('ISSUE DICTIONARY FOR JIRA:', 'debug')
+        print(issue_dict)
 
-        # build issue dict for jira
-        issue_dict = build_issue_dict(item)
+    if flags.verbose: p('Looking if linked issues should be created…')
 
-        if flags.debug:
-            p('ISSUE DICTIONARY FOR JIRA:', 'debug')
-            print(issue_dict)
+    # Create secondary issue if required
+    if item.get('link'):
+        p('Enter Details for Linked Item: {}'.format(item['link'].split('.')[1]))
+        item_linked = new_item(item['link'].split('.')[1])
+        if flags.debug: p(item_linked, 'debug', 'Linked Item: ')
+        issue_linked_dict = build_issue_dict(item_linked)
+        if flags.debug: p(issue_linked_dict, 'debug', 'Linked Item Issue Dictionary for JIRA: ')
 
-        # if not flags.simulate:
-        #     if flags.debug:
-        #         print issue_dict
-        #     if 'jira' not in locals():
-        #         jira = connect_to_jira()
-        #     new_issue = jira.create_issue(fields=issue_dict)
-        #     p('Issue created at https://jira.intapps.it/browse/%s' % new_issue, 'success')
-        #     if pwr_dict:
-        #         pwr_issue = jira.create_issue(fields=pwr_dict)
-        #         p('Power Adapter Issue created at https://jira.intapps.it/browse/%s' % pwr_issue, 'success')
-        #         # Linking these two issues
-        #         jira.create_issue_link('Relates', new_issue, pwr_issue)
-        #         p('Issue Link created successfully', 'success')
+    if not flags.simulate:
+        if 'jira' not in locals():
+            jira = connect_to_jira()
+        new_issue = jira.create_issue(fields=issue_dict)
+        p('Issue created at {jiraserver}/browse/{new_issue}'.format(jiraserver=config['jira']['server'], new_issue=new_issue), 'success')
+        # TODO: Find this variable in locals or it will produce an exception if not found
+        if issue_linked_dict:
+            linked_issue = jira.create_issue(fields=issue_linked_dict)
+            p('Issue created at {jiraserver}/browse/{new_issue}'.format(jiraserver=config['jira']['server'], new_issue=linked_issue), 'success')
+            # Linking these two issues
+            jira.create_issue_link('Relates', new_issue, linked_issue)
+            p('Issue Link created successfully', 'success')
 
 
-
-
+# TODO: Loop function
+# TODO: Pretty Output
 
 
 if __name__ == '__main__':
