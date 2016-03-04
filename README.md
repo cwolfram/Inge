@@ -12,3 +12,4 @@ Inge currently features only an interactive mode. It is not yet possible to pass
 - write checks if a serial number / inventory number already exists
 - implement linked issues
 - if the config file gets any more complicated, maybe I should use JSON or YAML
+- Flask-based Web interface
