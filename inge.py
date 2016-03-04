@@ -60,7 +60,7 @@ def sanitize_apple_serial(s):
         return s
 
 
-def p(text, message_type="normal"):
+def p(text, message_type="normal", prefix=""):
     """ Prints text via click.echo()
     :param text: the text to print
     :param message_type: controls how text is displayed, can be either "normal", "warning", "error" or "success"
@@ -76,7 +76,7 @@ def p(text, message_type="normal"):
         click.echo(click.style(' ', bg='green', fg='black') + click.style(' ' + text, fg='green'))
 
     elif message_type is "debug":
-        click.echo(click.style('Debug: ', bold=True) + click.style(str(text)))
+        click.echo(click.style('Debug: ', bold=True) + prefix + click.style(str(text)))
 
     else:
         click.echo(text)
