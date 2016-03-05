@@ -66,6 +66,7 @@ def sanitize_apple_serial(s):
 
 def p(text, message_type="normal", prefix=""):
     """ Prints text via click.echo()
+    :param prefix: Something that will be printed before the actual text
     :param text: the text to print
     :param message_type: controls how text is displayed, can be either "normal", "warning", "error" or "success"
     :return:
