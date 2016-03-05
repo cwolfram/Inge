@@ -14,14 +14,13 @@ INGE is designed to work together with a JIRA Inventory Project, as described he
 
 It let's you define own inventory workflows with your own existing custom fields that will be used during the scan
 of the inventory items. It can automatically fill in warranty and model information based on the serial number
-of an apple device. 
+of an apple device. (Using pyMacWarranty and MacModelShelf)
 
 ### Requirements
 
 Python 3. 
         
 Python modules: *Click*, *jira*, *python-dateutil*, *prettytable*, *oauthlib*, *jwt*, *cryptography*, *pyjwt*.
-
 
 ### Installation
 
@@ -82,6 +81,15 @@ Some tips:
 1. Set your scanner to end a line with a <CR> if you don't want to press Enter after every scan
 2. INGE will automatically strip the leading *S* from Apple serial numbers
 
+
+### Thanks
+
+Thanks go to:
+
+* [@magervalp](https://twitter.com/magervalp) for [MacModelShelf](https://github.com/MagerValp/MacModelShelf)
+* [@mikeymikey](https://twitter.com/mikeymikey) for [pyMacWarranty](https://github.com/pudquick/pyMacWarranty)
+
+Two projects which INGE relies heavily on. 
 
 ### To do
 
