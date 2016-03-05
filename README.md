@@ -16,6 +16,13 @@ It let's you define own inventory workflows with your own existing custom fields
 of the inventory items. It can automatically fill in warranty and model information based on the serial number
 of an apple device. 
 
+### Requirements
+
+Python 3. 
+        
+Python modules: *Click*, *jira*, *python-dateutil*, *prettytable*, *oauthlib*, *jwt*, *cryptography*, *pyjwt*.
+
+
 ### Installation
 
 1. Clone Repo and run `pip install -e .` to install all the requirements.
