@@ -86,7 +86,7 @@ def p(text, message_type="normal", prefix=""):
     else:
         click.echo(text)
 
-
+# read config and secrets
 config = configparser.ConfigParser()
 if not config.read('{}/config.ini'.format(scriptpath)):
     p("Config file missing, take a look at config.ini.example and rename it to config.ini", "error")
@@ -94,12 +94,13 @@ if not config.read('{}/config.ini'.format(scriptpath)):
 
 secrets = configparser.ConfigParser()
 if not secrets.read('{}/secrets.ini'.format(scriptpath)):
-    p("Secretsfile missing, I'm going to create it. ", "warning")
+    p("Seems to be the first start, I'm going to create secrets.ini ", "warning")
     try:
         secretsfile = open('secrets.ini', 'w')
         secretsfile.close()
     except BaseException as secretserror:
         p('Error at creating secrets.ini: {}'.format(secretserror), 'error')
+        sys.exit(4)
 
 
 def read(file_path):
