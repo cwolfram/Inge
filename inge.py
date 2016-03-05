@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 """
 INGE - Inventory Gone Easy
 A tool for adding inventory items to an inventory project in JIRA.
@@ -9,7 +8,6 @@ import os
 import configparser
 import inspect
 import sys
-import datetime, time, dateutil.parser
 import re
 
 try:
@@ -20,16 +18,22 @@ try:
     from lib.macmodelshelf import model, model_code
     from oauthlib.oauth1 import SIGNATURE_RSA
     from requests_oauthlib import OAuth1Session
-except ImportError as e:
-    print('Error: you should run "pip install -e ." first\n')
-    print(e)
+except ImportError as importerror:
+    click = None
+    JIRA = None
+    PrettyTable = None
+    model = None
+    model_code = None
+    SIGNATURE_RSA = None
+    OAuth1Session = None
+    g = None
+    print('Error: Required modules not found. You should run "pip install -e ." first\n')
+    print(importerror)
     sys.exit(1)
-
 
 VERSION = "0.1"
 
 scriptpath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-
 
 logo = """
  d8,
