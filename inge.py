@@ -90,6 +90,7 @@ def p(text, message_type="normal", prefix=""):
 config = configparser.ConfigParser()
 if not config.read('{}/config.ini'.format(scriptpath)):
     p("Config file missing, take a look at config.ini.example and rename it to config.ini", "error")
+    sys.exit(3)
 
 secrets = configparser.ConfigParser()
 if not secrets.read('{}/secrets.ini'.format(scriptpath)):
@@ -97,88 +98,88 @@ if not secrets.read('{}/secrets.ini'.format(scriptpath)):
     try:
         secretsfile = open('secrets.ini', 'w')
         secretsfile.close()
-    except BaseException as e:
-        p('Error at creating secrets.ini: {}'.format(e),'error')
+    except BaseException as secretserror:
+        p('Error at creating secrets.ini: {}'.format(secretserror), 'error')
 
 
 def read(file_path):
-    """ Read a file and return it's contents. """
+    """ Read a file and return it's contents.
+    :param file_path: Path of the - tada - file
+    """
     with open(file_path) as f:
         return f.read()
 
 
-# OAUTH #
-# The contents of the rsa.pem file generated (the private RSA key)
-try:
-    RSA_KEY = read(config.get('jira', 'rsa-private-key'))
-except BaseException as e:
-    p('Error loading the key file. Did you create a key pair? {}'.format(e), 'error')
-
-# The URLs for the JIRA instance
-JIRA_SERVER = config.get('jira','server')
-REQUEST_TOKEN_URL = JIRA_SERVER + '/plugins/servlet/oauth/request-token'
-AUTHORIZE_URL = JIRA_SERVER + '/plugins/servlet/oauth/authorize'
-ACCESS_TOKEN_URL = JIRA_SERVER + '/plugins/servlet/oauth/access-token'
-
-
-# Step 1: Get a request token
-
-try:
-    CONSUMER_KEY = secrets.get('jira', 'consumer_key')
-    ACCESS_TOKEN = secrets.get('jira', 'access_token')
-    ACCESS_TOKEN_SECRET = secrets.get('jira', 'access_token_secret')
-except (configparser.NoOptionError, configparser.NoSectionError) as e:
-    p('JIRA OAuth Token not found yet. Let\'s set it up.\n','warning')
-    print('We\'ll assume two things:')
-    print('1. You have already generated a RSA key pair.')
-    print('2. You have already configured an application link.')
-    print('If you didn\'t yet, go here and read how to do this:')
-    print('https://bitbucket.org/atlassian_tutorial/atlassian-oauth-examples')
-    print('')
-    print('STEP 1: Enter the Consumer Key\n(You probably set this when you configured the Application link in JIRA)')
-    CONSUMER_KEY = click.prompt(click.style('Consumer Key', bold=True))
-    print("\n")
-
-    oauth = OAuth1Session(CONSUMER_KEY, signature_type='auth_header',
-                          signature_method=SIGNATURE_RSA, rsa_key=RSA_KEY)
-    request_token = oauth.fetch_request_token(REQUEST_TOKEN_URL)
-
-    # Step 2: Get the end-user's authorization
-    print("STEP 2: Authorization")
-    print("  Visit to the following URL to provide authorization:")
-    print("  {}?oauth_token={}".format(AUTHORIZE_URL, request_token['oauth_token']))
-    print("\n")
-
-    while input("Press any key to continue..."):
-        pass
-
-    # XXX: This is an ugly hack to get around the verfication string
-    # that the server needs to supply as part of authorization response.
-    # But we hard code it.
-    oauth._client.client.verifier = u'verified-RepudvejOuHyawdoddEd'
-
-    # Step 3: Get the access token
-    access_token = oauth.fetch_access_token(ACCESS_TOKEN_URL)
-
-    # Step 4: Write it all to the secrets.ini
+def jira_oauth():
+    global RSA_KEY, jira_server, CONSUMER_KEY, ACCESS_TOKEN, ACCESS_TOKEN_SECRET, secretsfile
+    # OAUTH #
+    # The contents of the rsa.pem file generated (the private RSA key)
     try:
-        secretsfile = open("secrets.ini", 'w')
-        secrets.add_section('jira')
-        secrets.set('jira', 'consumer_key', CONSUMER_KEY)
-        secrets.set('jira', 'access_token', access_token['oauth_token'])
-        secrets.set('jira', 'access_token_secret', access_token['oauth_token_secret'])
-        secrets.write(secretsfile)
-        secretsfile.close()
+        RSA_KEY = read(config.get('jira', 'rsa-private-key'))
     except BaseException as e:
-        p('Error writing to secrets.ini: {}'.format(e))
+        p('Error loading the key file. Did you create a key pair? {}'.format(e), 'error')
 
-    ACCESS_TOKEN = secrets.get('jira', 'access_token')
-    ACCESS_TOKEN_SECRET = secrets.get('jira', 'access_token_secret')
+    # The URLs for the JIRA instance
+    jira_server = config.get('jira', 'server')
+    request_token_url = jira_server + '/plugins/servlet/oauth/request-token'
+    authorize_url = jira_server + '/plugins/servlet/oauth/authorize'
+    access_token_url = jira_server + '/plugins/servlet/oauth/access-token'
+    # Step 1: Get a request token
+    try:
+        CONSUMER_KEY = secrets.get('jira', 'consumer_key')
+        ACCESS_TOKEN = secrets.get('jira', 'access_token')
+        ACCESS_TOKEN_SECRET = secrets.get('jira', 'access_token_secret')
+    except (configparser.NoOptionError, configparser.NoSectionError):
+        p('JIRA OAuth Token not found yet. Let\'s set it up.\n', 'warning')
+        print('We\'ll assume two things:')
+        print('1. You have already generated a RSA key pair.')
+        print('2. You have already configured an application link.')
+        print('If you didn\'t yet, go here and read how to do this:')
+        print('https://bitbucket.org/atlassian_tutorial/atlassian-oauth-examples')
+        print('')
+        print(
+            'STEP 1: Enter the Consumer Key\n(You probably set this when you configured the Application link in JIRA)')
+        CONSUMER_KEY = click.prompt(click.style('Consumer Key', bold=True))
+        print("\n")
+
+        oauth = OAuth1Session(CONSUMER_KEY, signature_type='auth_header',
+                              signature_method=SIGNATURE_RSA, rsa_key=RSA_KEY)
+        request_token = oauth.fetch_request_token(request_token_url)
+
+        # Step 2: Get the end-user's authorization
+        print("STEP 2: Authorization")
+        print("  Visit to the following URL to provide authorization:")
+        print("  {}?oauth_token={}".format(authorize_url, request_token['oauth_token']))
+        print("\n")
+
+        while input("Press any key to continue..."):
+            pass
+
+        # this ugly hack is needed until I figure out how OAuth actually works
+        oauth._client.client.verifier = config['jira']['verifier']
+
+        # Step 3: Get the access token
+        access_token = oauth.fetch_access_token(access_token_url)
+
+        # Step 4: Write it all to the secrets.ini
+        try:
+            secretsfile = open("secrets.ini", 'w')
+            secrets.add_section('jira')
+            secrets.set('jira', 'consumer_key', CONSUMER_KEY)
+            secrets.set('jira', 'access_token', access_token['oauth_token'])
+            secrets.set('jira', 'access_token_secret', access_token['oauth_token_secret'])
+            secrets.write(secretsfile)
+            secretsfile.close()
+        except BaseException as e:
+            p('Error writing to secrets.ini: {}'.format(e))
+
+        ACCESS_TOKEN = secrets.get('jira', 'access_token')
+        ACCESS_TOKEN_SECRET = secrets.get('jira', 'access_token_secret')
 
 
 def connect_to_jira():
     try:
-        return JIRA(options={'server': JIRA_SERVER}, oauth={
+        return JIRA(options={'server': jira_server}, oauth={
             'access_token': ACCESS_TOKEN,
             'access_token_secret': ACCESS_TOKEN_SECRET,
             'consumer_key': CONSUMER_KEY,
