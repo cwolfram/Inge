@@ -42,13 +42,13 @@ logo = """
   88b  88bd88b  d888b8b   d8888b
   88P  88P' ?8bd8P' ?88  d8b_,dP
  d88  d88   88P88b  ,88b 88b
-d88' d88'   88b`?88P'`88b`?888P'
+d88' d88'   88b`?88P'`88b`?888P'  {v}
                       )88
-     2.0              ,88P
+                     ,88P
                  `?8888P
 
 ====  Inventory Gone Easy  ====
-"""
+""".format(v=VERSION)
 
 
 def sanitize_apple_serial(s):
