@@ -1,15 +1,87 @@
 [jira]
+# Fill in your own jira Server here. Required.
 server = https://jira.example.com
 project = INV
+
+# The RSA private key for the OAuth1 Authentication
+# If you don't know how to set up OAuth in JIRA, read this and look at the example code here:
+# https://bitbucket.org/atlassian_tutorial/atlassian-oauth-examples
 rsa-private-key = testkey.pem
 
+# this ugly hack is needed until I figure out how OAuth actually works (I'm so sorry)
+# just to be safe, fill this with random data.
+verifier = iwfho1iwfnwnqo2dj9328e239honwnkwncwl
+
+
 [fields]
-# Put in your own jira fields for these
+# Put in your own jira custom field names here
+# Easiest method to find out the names is to browse to an issue detail page and fire up the web inspector.
+# The fields are named in the source of the page.
+# Important: Here you have to match the fields you define down in the input modules or you will get errors.
 inventory_number = customfield_11012
 serial_number = customfield_11007
-purchase_date = customfield_11302
-warranty_end_date = customfield_11303
-manufacture_date = customfield_11304
-model_identifier = customfield_11308
+est_purchase_date = customfield_11302
+est_warranty_end_date = customfield_11303
+est_manufacture_date = customfield_11304
+model = customfield_11308
+ram = customfield_11307
+disk_size = customfield_11306
+#don't change this
 summary = summary
 
+[input.macbook]
+# Here you can define the fields for your inventory items
+# Syntax:
+#   field.{your name} = [prompt.][default_value]
+#
+# For example:
+#   field.inventory_number = prompt       # prompts for an input
+#   field.inventory_number = prompt.0001  # prompts for an input with the default value 0001
+#   field.inventory_number = 0001         # always uses 0001 for this field
+
+field.inventory_number = prompt
+
+# Don't change this field name (serial_number). It is important for warranty and model type lookup.
+field.serial_number = prompt
+
+field.ram = prompt.16GB
+field.disk_size = prompt.512GB
+
+# appledevice = true: Start a special function that fills out the following fields
+# based on online lookup: model, warranty_end_date, manufacture_date, purchase_date.
+# This should always be set to true if the device has a serial number.
+appledevice = True
+
+# This needs to be exactly the issue type you have in your JIRA. Required.
+issuetype = Computer Asset
+
+# Links an issue with input type poweradapter to this issue
+# Currently only one linked Issue is supported.
+# Comment it out if you don't need it.
+link = input.poweradapter
+
+# Summary string template. Words with $ will be replaced by the value of the corresponding field. Required.
+summary = myt-$inventory_number
+
+[input.poweradapter]
+field.inventory_number = prompt
+field.model = Apple Power Adapter Magsafe 2
+summary = pwr-$inventory_number
+issuetype = Misc. Hardware Asset
+
+[input.keyboard]
+field.inventory_number = prompt
+field.model_identifier = prompt.Apple Wired Keyboard
+summary = key-$inventory_number
+issuetype = Computer Asset
+
+# Set up your own workflows!
+# Here's another example.
+#
+#[input.androidphone]
+#field.inventory_number = prompt
+#field.serial_number = prompt
+#appledevice = False
+#field.model = prompt.Nexus 6
+#summary = $model $inventory_number
+#issuetype = Mobile Phone
