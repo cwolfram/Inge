@@ -228,8 +228,6 @@ def new_item(itemtype):
     return item
 
 
-# "myt-$inventory_number" should become "myt-1337" if inventory_number is "1337"
-# "myt-$serialnumber" should become "myt-C02PQB5VG8WP" if serialnumber is "C02PQB5VG8WP"
 def build_summary_string(item, devicetype):
     """
     Builds a summary string from the template defined in the config.ini
@@ -273,7 +271,8 @@ def build_issue_dict(item):
                 issue_dict[config['fields'][i]] = item[i]
             except KeyError:
                 if i != 'link':
-                    p('The following field does not seem to exist in the \"fields\" section of the config.ini: {}'.format(i), 'warning')
+                    p('The following field does not seem to exist in the \"fields\" '
+                      'section of the config.ini: {}'.format(i), 'warning')
     issue_dict['summary'] = item['summary']
 
     try:
@@ -283,11 +282,77 @@ def build_issue_dict(item):
         sys.exit(19)
 
     try:
-        issue_dict['issuetype'] = {'name': config['input.'+item['itemtype']]['issuetype']}
+        issue_dict['issuetype'] = {'name': config['input.' + item['itemtype']]['issuetype']}
     except KeyError:
-        p("No \"issuetype\" key found in config.ini (in section [{}]). ".format('input.'+item['itemtype']), 'error')
+        p("No \"issuetype\" key found in config.ini (in section [{}]). ".format('input.' + item['itemtype']), 'error')
         sys.exit(19)
     return issue_dict
+
+
+def create_inventory_item(flags, itemtype, jira):
+    item = new_item(itemtype)
+    if flags.debug:
+        p('PRELIMINARY DICTIONARY: ', 'debug')
+        p(item, 'debug', 'Original Item: ')
+
+    # build issue dict for jira
+    issue_dict = build_issue_dict(item)
+    if flags.debug:
+        p('ISSUE DICTIONARY FOR JIRA:', 'debug')
+        print(issue_dict)
+
+    # Create secondary issue if required
+    if item.get('link'):
+        item_linked = None
+        click.echo(click.style(
+            'Enter Details for new linked item {} (CTRL-C to quit)'.format(item['link'].split('.')[1]),
+            fg='white'))
+        # p('Enter Details for Linked Item: {}'.format(item['link'].split('.')[1]))
+        item_linked = new_item(item['link'].split('.')[1])
+        if flags.debug:
+            p(item_linked, 'debug', 'Linked Item: ')
+        issue_linked_dict = build_issue_dict(item_linked)
+        if flags.debug:
+            p(issue_linked_dict, 'debug', 'Linked Item Issue Dictionary for JIRA: ')
+
+    if flags.verbose:
+        p('')
+        p('Fields for item {}'.format(item['itemtype']))
+        p(build_pretty_table(flags, item))
+        if 'item_linked' in locals():
+            p('')
+            p('Fields for item {}'.format(item_linked['itemtype']))
+            p(build_pretty_table(flags, item_linked))
+
+    # Writing everything to JIRA
+    if not flags.simulate:
+        try:
+            new_issue = jira.create_issue(fields=issue_dict)
+        except BaseException as e:
+            p("Creating Issue failed: {}".format(e), 'error')
+            sys.exit(20)
+
+        p('Issue for {itemtype} created at '
+          '{jiraserver}/browse/{new_issue}'.format(jiraserver=config['jira']['server'],
+                                                   new_issue=new_issue,
+                                                   itemtype=item['itemtype']),
+          'success')
+
+        # Creating linked issue if required
+        if 'issue_linked_dict' in locals():
+            linked_issue = jira.create_issue(fields=issue_linked_dict)
+            p('Issue for {itemtype} created at {jiraserver}/browse/{new_issue}'.format(
+                jiraserver=config['jira']['server'],
+                new_issue=linked_issue,
+                itemtype=item_linked['itemtype']), 'success')
+            # Linking these two issues
+            jira.create_issue_link('Relates', new_issue, linked_issue)
+            p('Issue Link created successfully', 'success')
+
+    else:
+        # Simulation mode output:
+        p('Issue would have been created on {jiraserver}, if this weren\'t simulation mode.'.format(
+            jiraserver=config['jira']['server']), 'warning')
 
 
 class Flags(object):
@@ -300,6 +365,7 @@ class Flags(object):
 
 pass_flags = click.make_pass_decorator(Flags, ensure=True)
 
+
 @click.group()
 @click.version_option(version=VERSION)
 @click.option('-v', '--verbose', is_flag=True, help='Shows more information')
@@ -307,23 +373,32 @@ pass_flags = click.make_pass_decorator(Flags, ensure=True)
 @click.option('-s', '--simulate', is_flag=True, help='Simulates run, nothing will be written')
 @pass_flags
 def main(flags, verbose, debug, simulate):
-    """A tool for adding inventory items to an inventory project in JIRA"""
+    """ INGE: Inventory Gone Easy.
+        A tool for adding inventory items to an inventory project in JIRA
+        :param flags: config flags object
+        :param verbose: if set, gives more information
+        :param debug: if set, outputs dicts and even more information
+        :param simulate: if set, does not connect to JIRA, just simulates
+    """
     flags.verbose = verbose
     flags.simulate = simulate
     flags.debug = debug
+    jira_oauth()
     if flags.verbose:
         p(logo)
     if flags.simulate:
         p("Simulation mode, nothing will be written", 'warning')
+        p('')
 
 
 @main.command()
-@click.option('--inventory_number')
-@click.option('--serial_number')
 @click.option('-t', '--itemtype', default='macbook')
 @pass_flags
-def new(flags, inventory_number, serial_number, itemtype):
-    """Creates a new inventory ticket"""
+def new(flags, itemtype):
+    """Creates a new inventory ticket
+    :param flags: Config Flags object
+    :param itemtype: Type of device as defined in config.ini (input.itemype)
+    """
 
     # Writes a list of input types from the config in a list
     input_types = list()
@@ -332,7 +407,6 @@ def new(flags, inventory_number, serial_number, itemtype):
             input_types.append(x.split('.')[1])
 
     if flags.debug:
-        # print('Debug: Input Type List: ', input_types)
         p(input_types, 'debug', 'Input Type List: ')
 
     # Checks if specified type is in the config ini. If yes, let's go!
@@ -340,63 +414,22 @@ def new(flags, inventory_number, serial_number, itemtype):
         p('Given input type \"{}\" not in config.ini'.format(itemtype), 'error')
         sys.exit(17)
 
-    p('Enter Details for item: {}'.format(itemtype))
-    # iterates through the fields starting with "field."
-    # if the value starts with "prompt": prompt for a value.
-    # if there is a value after the "prompt.": use it as a default value
-    item = new_item(itemtype)
-
-    if flags.debug:
-        p('PRELIMINARY DICTIONARY: ', 'debug')
-        p(item, 'debug','Original Item: ')
-
-    # build issue dict for jira
-    issue_dict = build_issue_dict(item)
-
-    if flags.debug:
-        p('ISSUE DICTIONARY FOR JIRA:', 'debug')
-        print(issue_dict)
-
-    if flags.verbose: p('Looking if linked issues should be created…')
-
-    # Create secondary issue if required
-    if item.get('link'):
-        p('Enter Details for Linked Item: {}'.format(item['link'].split('.')[1]))
-        item_linked = new_item(item['link'].split('.')[1])
-        if flags.debug: p(item_linked, 'debug', 'Linked Item: ')
-        issue_linked_dict = build_issue_dict(item_linked)
-        if flags.debug: p(issue_linked_dict, 'debug', 'Linked Item Issue Dictionary for JIRA: ')
-
-    # Writing everything to JIRA
+    jira = None
     if not flags.simulate:
-        if 'jira' not in locals():
+        if not jira:
             try:
                 jira = connect_to_jira()
             except BaseException as e:
                 p("Connection to JIRA failed: {}".format(e), 'error')
                 sys.exit(19)
-        try:
-            new_issue = jira.create_issue(fields=issue_dict)
-        except BaseException as e:
-            p("Creating Issue failed: {}".format(e), 'error')
-            sys.exit(20)
 
-        p('Issue created at {jiraserver}/browse/{new_issue}'.format(jiraserver=config['jira']['server'], new_issue=new_issue), 'success')
+    # creates one inventory item and writes it to jira
+    while True:
+        click.echo(click.style('Enter Details for new item {} (CTRL-C to quit)'.format(itemtype), fg='white'))
 
-        # Creating linked issue if required
-        if 'issue_linked_dict' not in locals():
-            linked_issue = jira.create_issue(fields=issue_linked_dict)
-            p('Issue created at {jiraserver}/browse/{new_issue}'.format(jiraserver=config['jira']['server'], new_issue=linked_issue), 'success')
-            # Linking these two issues
-            jira.create_issue_link('Relates', new_issue, linked_issue)
-            p('Issue Link created successfully', 'success')
-
-    print(locals())
-
-# TODO: Loop function
-# TODO: Pretty Output
+        create_inventory_item(flags, itemtype, jira)
+        p('')
 
 
 if __name__ == '__main__':
     main()
-
