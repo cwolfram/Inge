@@ -241,8 +241,24 @@ def build_summary_string(item, devicetype):
     summary = config['input.{}'.format(devicetype)]['summary']
     m = r.findall(summary)
     for x in m:
-        summary = summary.replace('$'+x,item[x])
+        summary = summary.replace('$' + x, item[x])
     return summary
+
+
+def build_pretty_table(flags, item):
+    if flags.debug:
+        p('Creating Table...', 'debug')
+
+    table = PrettyTable(['Field', 'Value'])
+    table.align['Field'] = 'r'
+    table.align['Value'] = 'l'
+
+    for row in item:
+        if row != 'link':
+            table.add_row([row, item.get(row)])
+
+    table.sortby = "Field"
+    return table
 
 
 def build_issue_dict(item):
