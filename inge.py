@@ -345,19 +345,31 @@ def new(flags, inventory_number, serial_number, itemtype):
         issue_linked_dict = build_issue_dict(item_linked)
         if flags.debug: p(issue_linked_dict, 'debug', 'Linked Item Issue Dictionary for JIRA: ')
 
+    # Writing everything to JIRA
     if not flags.simulate:
         if 'jira' not in locals():
-            jira = connect_to_jira()
-        new_issue = jira.create_issue(fields=issue_dict)
+            try:
+                jira = connect_to_jira()
+            except BaseException as e:
+                p("Connection to JIRA failed: {}".format(e), 'error')
+                sys.exit(19)
+        try:
+            new_issue = jira.create_issue(fields=issue_dict)
+        except BaseException as e:
+            p("Creating Issue failed: {}".format(e), 'error')
+            sys.exit(20)
+
         p('Issue created at {jiraserver}/browse/{new_issue}'.format(jiraserver=config['jira']['server'], new_issue=new_issue), 'success')
-        # TODO: Find this variable in locals or it will produce an exception if not found
-        if issue_linked_dict:
+
+        # Creating linked issue if required
+        if 'issue_linked_dict' not in locals():
             linked_issue = jira.create_issue(fields=issue_linked_dict)
             p('Issue created at {jiraserver}/browse/{new_issue}'.format(jiraserver=config['jira']['server'], new_issue=linked_issue), 'success')
             # Linking these two issues
             jira.create_issue_link('Relates', new_issue, linked_issue)
             p('Issue Link created successfully', 'success')
 
+    print(locals())
 
 # TODO: Loop function
 # TODO: Pretty Output
