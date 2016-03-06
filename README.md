@@ -9,7 +9,10 @@ To fix this, send bug reports and pull requests.
 
 ### About
 
-INGE is designed to work together with a JIRA Inventory Project, as described here: 
+INGE is a small tool that helps you to inventory small batches of devices, saving you time by automation of 
+tedious tasks.
+
+It is designed to work together with a JIRA Inventory Project, as described here: 
 <https://carstenwolfram.de/inventory-management-with-jira/> 
 
 It lets you define own inventory workflows with your own existing custom fields that will be used during the scan
@@ -78,8 +81,11 @@ INGE should work great with a barcode scanner.
 
 Some tips:
 
-1. Set your scanner to end a line with a <CR> if you don't want to press Enter after every scan
+1. Set your scanner to end a line with a \<CR\> if you don't want to press Enter after every scan
 2. INGE will automatically strip the leading *S* from Apple serial numbers
+3. If you have steps in your workflow that you normally just confirm with Enter, you should print out
+   a barcode that just means \<Enter\> (consult your barcode scanner's manual for that). This will prevent you
+   from having to reach to the keyboard all the time.
 
 
 ### Thanks
