@@ -12,14 +12,14 @@ To fix this, send bug reports and pull requests.
 INGE is designed to work together with a JIRA Inventory Project, as described here: 
 <https://carstenwolfram.de/inventory-management-with-jira/> 
 
-It let's you define own inventory workflows with your own existing custom fields that will be used during the scan
+It lets you define own inventory workflows with your own existing custom fields that will be used during the scan
 of the inventory items. It can automatically fill in warranty and model information based on the serial number
 of an apple device. (Using pyMacWarranty and MacModelShelf)
 
 ### Requirements
 
 Python 3. 
-        
+
 Python modules: *Click*, *jira*, *python-dateutil*, *prettytable*, *oauthlib*, *jwt*, *cryptography*, *pyjwt*.
 
 ### Installation
