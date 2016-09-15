@@ -27,7 +27,7 @@ Python modules: *Click*, *jira*, *python-dateutil*, *prettytable*, *oauthlib*, *
 
 ### Installation
 
-1. Clone Repo and run `pip install -e .` to install all the requirements.
+1. Clone Repo and run `pip3 install -e .` to install all the requirements.
 2. Copy or Rename `config.ini.example` to `config.ini`
 
 ### Configuration
